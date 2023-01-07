@@ -86,7 +86,7 @@ int main(int argc, char** argv)
     int sfd, cfd, fdmax, fds, rc, i, on = 1;
     struct sockaddr_in saddr, caddr;
     static struct timeval timeout;
-    fd_set mask, rmask, wmask, fullReadMask, sizeReadMask, nameReadMask, fullWriteMask, sizeWriteMask;		
+    fd_set mask, rmask, wmask, fullReadMask, sizeReadMask, nameReadMask, countReadMask, fullWriteMask, sizeWriteMask;		
 
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = INADDR_ANY;
@@ -101,6 +101,7 @@ int main(int argc, char** argv)
     FD_ZERO(&fullReadMask);
     FD_ZERO(&sizeReadMask);
     FD_ZERO(&nameReadMask);
+    FD_ZERO(&countReadMask);
     FD_ZERO(&fullWriteMask);
     FD_ZERO(&sizeWriteMask);
     fdmax = sfd;
@@ -128,15 +129,17 @@ int main(int argc, char** argv)
         }
         for(i=sfd+1; i <= fdmax && fds > 0; i++)
         {
-            printf("hej\n");
             int bytes = 0;
+            int fileNum;
             int mode;
-            char buf[BUF_SIZE];			
+            int count;
+            char buf[BUF_SIZE];
+            char zip_command[BUF_SIZE];
 	    char* fileName;
 	    char* fileFullName;
 	    long int fileLen;
 	    long int  fileSize;
-	    char* fileData;     	    
+	    char* fileData;
             FILE *file;
             if(FD_ISSET(i, &wmask))
             {
@@ -152,6 +155,7 @@ int main(int argc, char** argv)
                     	fileData[j] = fgetc(file);
                     fclose(file);
                     /* Tworzenie i pobieranie danych z pliku po kompresji */
+                    printf("fileSize: %ld\n", fileSize);
                     
                     printf("Etap 6 - wysylanie calego pliku zip...\n");
                     write_to(i, fileData, fileSize);
@@ -176,7 +180,6 @@ int main(int argc, char** argv)
                     
                     /* czyszczenie */
                     if(fileFullName)	free(fileFullName);
-                    //if(fileName)	free(fileName);
                     if(fileData)	free(fileData);
                     /* czyszczenie */
       
@@ -201,6 +204,7 @@ int main(int argc, char** argv)
 		    memset(cFileSize, 0, sizeof cFileSize);			// czyszczenie cFileSize z artefaktów
 		    sprintf(cFileSize,"%ld", fileSize);
 		    cFileSize[lenFileSize-1] = '?';
+		    printf("cFileSize: %s\n", cFileSize);
 		    /* Konwersja rozmiaru pliku do string */
 		    
                     printf("Etap 5 - wysylanie rozmiaru pliku zip...\n");
@@ -217,35 +221,14 @@ int main(int argc, char** argv)
                 }
                 else
                 {
-                    // Etap 4 - wysyłanie pliku nazwy pliku po kompresji i odebranie odpowiedzi
-                    
-                    /* utworzenie pliku i zapisanie w nim danych */
-                    printf("Etap 4 - Tworzenie pliku do kompresji...\n");
-                    file = open_file(fileFullName, "w+");
-            	    for (long int j = 0; j < fileSize; j++)
-			fputc((int)fileData[j], file);
-            	    fclose(file);
-            	    if(fileData)	free(fileData);
-            	    printf("Etap 4 - Utworzono plik do kompresji.\n");
-            	    /* utworzenie pliku i zapisanie w nim danych */
+                    // Etap 4.5 - wysyłanie pliku nazwy pliku po kompresji i odebranie odpowiedzi              
 
 		    /* Tworzenie i uruchomienie polecenia do kompresji pliku */
-		    printf("Etap 4 - Tworzenie polecenia do kompresji pliku...\n");
-		    memset(buf, 0, sizeof buf);
-                    strcat(buf, "zip ./");
-                    strcat(buf, fileName);
-                    strcat(buf, ".zip ");
-                    strcat(buf, fileFullName);
-                    system((const char*)buf);						// uruchamianie polecenia kompresji
-                    printf("Etap 4 - Utworzono polecenie do kompresji pliku.\n");
+		    printf("Etap 4.5 - Tworzenie polecenia do kompresji pliku...\n");
+                    system("rm -f package.zip");					// usuwanie wcześniejszego zipa
+                    system((const char*)zip_command);					// uruchamianie polecenia kompresji
+                    printf("Etap 4.5 - Utworzono polecenie do kompresji pliku.\n");
                     /* Tworzenie i uruchomienie polecenia do kompresji pliku */
-
-		    /* Usuwanie pliku do kompresji */
-		    memset(buf, 0, sizeof buf);						// czyszczenie bufora
-		    strcat(buf, "rm ");
-		    strcat(buf, fileFullName);
-		    system((const char*)buf);						// usunięcie pliku do kompresji
-		    /* Usuwanie pliku do kompresji */
 
 		    if(fileFullName)	free(fileFullName);				// czyszczenie pamięci dla nazwy
 		    memset(buf, 0, sizeof buf);						// czyszczenie bufora
@@ -258,9 +241,8 @@ int main(int argc, char** argv)
 		    else
 		    {
 		        /* Tworzenie nazwy pliku z rozszerzeniem po kompresji */
-		        strcat(buf, fileName);
+		        strcat(buf, "package.zip");
 		        printf("buf: %s\n", buf);
-		        strcat(buf, ".zip");
                         /* Tworzenie nazwy pliku z rozszerzeniem po kompresji */	
                     
                         /* Przypisanie nazwy pliku do zmiennej */
@@ -269,14 +251,6 @@ int main(int argc, char** argv)
                         strcpy(fileFullName, buf);
                         printf("fileFullName: %s\n", fileFullName);
                         /* Przypisanie nazwy pliku do zmiennej */
-                    
-		        strcat(buf, "?");						// dopisanie '?' do nazwy pliku
-	
-		        printf("Etap 4 - wysyłanie nazwy pliku zip...\n");
-                        write_to(i, buf, strlen(buf)+1);
-                        printf("Etap 4 - wyslano nazwe pliku zip.\n");
-                    
-		        read_ans(i, "4");						// odbieranie odpowiedzi
 		    
 		        printf("Name of zip file: %s\n", fileFullName);
                     
@@ -297,7 +271,7 @@ int main(int argc, char** argv)
             {
 		if(FD_ISSET(i, &fullReadMask))
 		{
-		    // Etap 3 - odczytanie całego pliku i wysłanie odpowiedzi
+		    // Etap 4 - odczytanie całego pliku i wysłanie odpowiedzi
 		    
 		    fds -= 1;
 		    
@@ -306,39 +280,62 @@ int main(int argc, char** argv)
 		    memset(fileData, 0, fileSize);
 		     
 		    /* pełne odczytanie całego pliku */
-		    printf("Etap 3 - odczytywanie calego pliku...\n");
+		    printf("Etap 4 - odczytywanie calego pliku...\n");
 		    while(1)
 		    {
 			bytes += read(i, fileData+bytes, fileSize-bytes);
 			if(bytes>=fileSize) 
 			{
-			    printf("Etap 3 - zakończono odczytywanie pliku.\n");
+			    printf("Etap 4 - zakończono odczytywanie pliku.\n");
 			    break; 
 			}
 		    }
 		    /* pełne odczytanie całego pliku */
 		    
-		    send_ans(i, "3");							// wysyłanie odpowiedzi
+		    /* utworzenie pliku i zapisanie w nim danych */
+                    printf("Etap 4 - Tworzenie pliku do kompresji...\n");
+                    file = open_file(fileFullName, "w+");
+            	    for (long int j = 0; j < fileSize; j++)
+			fputc((int)fileData[j], file);
+            	    fclose(file);
+            	    if(fileData)	free(fileData);
+            	    printf("Etap 4 - Utworzono plik do kompresji.\n");
+            	    /* utworzenie pliku i zapisanie w nim danych */
 		    
-		    FD_SET(i, &wmask);							// aktywacja maski wmask
-		    FD_CLR(i, &rmask);							// deaktywacja maski rmask
-		    FD_CLR(i, &fullReadMask);						// deaktywacja maski fullReadMask
+		    strcat(zip_command, fileFullName);
+		    
+		    send_ans(i, "4");							// wysyłanie odpowiedzi
+		    
+		    FD_CLR(i, &fullReadMask);					// deaktywacja maski fullReadMask
+		    
+		    printf("zip_command: %s\n", zip_command);
+		    printf("count: %d\n", count);
+		    if(count<fileNum)
+		    {
+		    	strcat(zip_command, " ");
+		    	FD_SET(i, &nameReadMask);
+		    }
+		    else
+		    {
+		    	FD_SET(i, &wmask);						// aktywacja maski wmask
+		    	FD_CLR(i, &rmask);						// deaktywacja maski rmask	
+		    }
 		}
 		else if(FD_ISSET(i, &sizeReadMask))
 		{
-		    // Etap 2 - odbieranie rozmiaru pliku do kompresji i wysyłanie odpowiedzi
+		    // Etap 3 - odbieranie rozmiaru pliku do kompresji i wysyłanie odpowiedzi
 		    
 		    bytes = 0;							// czyszczenie zmiennej pomocniczej
 		    memset(buf, 0, sizeof buf);					// czyszczenie bufora
 		    
 		    /* pełny odczyt rozmiaru pliku */
-		    printf("Etap 2 -odczytywanie rozmiaru...\n");
+		    printf("Etap 3 -odczytywanie rozmiaru...\n");
 		    while(1)
 		    {
 			bytes += read(i, buf+bytes, BUF_SIZE-bytes);
 			if(buf[bytes-2] == '?')
 		 	{
-			    printf("Etap 2 - zakonczono odczyt rozmiaru.\n");
+			    printf("Etap 3 - zakonczono odczyt rozmiaru.\n");
 			    break;
 			}
 		    }
@@ -346,7 +343,7 @@ int main(int argc, char** argv)
 		    
 		    fileSize = atoi(buf);					// zamiana rozmiaru na long int
 		    
-		    send_ans(i, "2");						// wysyłanie odpowiedzi
+		    send_ans(i, "3");						// wysyłanie odpowiedzi
 		    
 		    printf("Size of file: %ld\n", fileSize);
 		    
@@ -355,19 +352,19 @@ int main(int argc, char** argv)
 		}
 		else if(FD_ISSET(i, &nameReadMask))
        		{
-       		    // Etap 1 - odbieranie nazwy pliku do kompresji i wysyłanie odpowiedzi
+       		    // Etap 2 - odbieranie nazwy pliku do kompresji i wysyłanie odpowiedzi
        		    
        		    bytes = 0;							// czyszczenie zmiennej pomocniczej
 		    memset(buf, 0, sizeof buf);					// czyszczenie bufora
 		    
 		    /* pełne odczytanie nazwy pliku do kompresji */
-		    printf("Etap 1 - odczytywanie nazwy...\n"); 
+		    printf("Etap 2 - odczytywanie nazwy...\n"); 
 		    while(1)
 		    {
 			bytes += read(i, buf+bytes, BUF_SIZE-bytes);
 			if(buf[bytes-2] == '?')
 			{
-			    printf("Etap 1 - zakonczono odczyt nazwy.\n");
+			    printf("Etap 2 - zakonczono odczyt nazwy.\n");
 			    break;
 			}
 		    }
@@ -386,6 +383,7 @@ int main(int argc, char** argv)
 		    }
 		    /* odczyt długości nazwy pliku i pozycji '.' */
 		    
+		    count++;
 		    /* przepisywanie nazw pliku */
 		    fileFullName = malloc(fileLen);					// alokacja pamięci dla nazwy pliku
 		    memset(fileFullName, 0, fileLen);					// czyszczenie fileFullName z artefaktów
@@ -404,12 +402,45 @@ int main(int argc, char** argv)
 		    printf("fileName: %s\n", fileName);
 		    /* przepisywanie nazw pliku */
 		    
-		    send_ans(i, "1");							// wysyłanie odpowiedzi
+		    send_ans(i, "2");							// wysyłanie odpowiedzi
 		    
 		    printf("Name of file: %s\n", fileFullName);		
 		    
 		    FD_SET(i, &sizeReadMask);						// aktywacja maski sizeReadMask
 		    FD_CLR(i, &nameReadMask);						// deaktywacja maski nameReadMask
+		}
+		else if(FD_ISSET(i, &countReadMask))
+		{
+		    // Etap 1 - odczytywanie liczby plików do kompresji i wysyłanie odpowiedzi
+		    
+		    bytes = 0;							// czyszczenie zmiennej pomocniczej
+		    memset(buf, 0, sizeof buf);					// czyszczenie bufora
+		    
+		    /* pełne odczytanie liczby plików do kompresji */
+		    printf("Etap 1 - odczytywanie liczby plików...\n"); 
+		    while(1)
+		    {
+			bytes += read(i, buf+bytes, BUF_SIZE-bytes);
+			if(buf[bytes-2] == '?')
+			{
+			    printf("Etap 1 - zakonczono odczyt liczby plików.\n");
+			    break;
+			}
+		    }
+		    printf("odczytano %d bytes\n", bytes);
+		    printf("Buf %s\n", buf);
+		    /* pełne odczytanie liczby plików do kompresji */
+		    
+		    fileNum = atoi(buf);					// zamiana rozmiaru na long int
+		    count = 0;
+		    printf("Numer of files: %d\n", fileNum);
+		    
+		    strcat(zip_command, "zip -m package.zip ");			// początek tworzenia komendy zip
+		    
+		    send_ans(i, "1");						// wysyłanie odpowiedzi
+		    
+		    FD_SET(i, &nameReadMask);					// aktywacja maski nameReadMask
+		    FD_CLR(i, &countReadMask);					// deaktywacja maski countReadMask
 		}
 		else
 		{
@@ -434,8 +465,8 @@ int main(int argc, char** argv)
 		    mode = atoi(buf);
 		    printf("Server work mode: %d\n", mode);
 		    send_ans(i, "0");							// wysyłanie odpowiedzi
-		    
-		    FD_SET(i, &nameReadMask);						// aktywacja maski nameReadMask
+		   
+		    FD_SET(i, &countReadMask);						// aktywacja maski countReadMask
 		}
                 if(i == fdmax)
 		{
@@ -443,8 +474,10 @@ int main(int argc, char** argv)
 		    printf("Stan fullRead: %d\n", !FD_ISSET(fdmax, &fullReadMask));
 		    printf("Stan sizeRead: %d\n", !FD_ISSET(fdmax, &sizeReadMask));
 		    printf("Stan nameRead: %d\n", !FD_ISSET(fdmax, &nameReadMask));
+		    printf("Stan countRead: %d\n", !FD_ISSET(fdmax, &countReadMask));
                     while(fdmax > sfd && !FD_ISSET(fdmax, &wmask) && 
-                    	  !FD_ISSET(fdmax, &fullReadMask) && !FD_ISSET(fdmax, &sizeReadMask) && !FD_ISSET(fdmax, &nameReadMask))
+                    	  !FD_ISSET(fdmax, &fullReadMask) && !FD_ISSET(fdmax, &sizeReadMask) 
+                    	  && !FD_ISSET(fdmax, &nameReadMask) && !FD_ISSET(fdmax, &countReadMask))
 		    {
                          printf("Nastepny klient\n");
 		         fdmax -= 1;
