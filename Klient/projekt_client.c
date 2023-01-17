@@ -144,7 +144,6 @@ int main(int argc, char** argv)
     for(long int count=fileNum-1;count>=0;count--)
     {
     	// Etap 2 - wysyłanie nazwy pliku i odbieranie potwierdzenia.
-    
     	printf("Name of file %ld: %s\n", count+1, argv[6+count]);
     	file = open_file(argv[6+count], "rb");	// otwarcie pliku
     
@@ -168,10 +167,9 @@ int main(int argc, char** argv)
     	write_to(sfd, fileName, fileLen+1);
     	printf("Etap 2 - wyslano nazwe pliku do kompresji.\n");
     	/* wysylanie nazwy pliku do kompresji */
-    
     	read_ans(sfd, "2");				// odczytanie odpowiedzi od serwera dla etapu 2.
-  
-  
+  	sleep(4);
+  	
 
     	// Etap 3 - wysylanie rozmiaru pliku do kompresji i odebranie potwierdzenia
     
@@ -198,8 +196,6 @@ int main(int argc, char** argv)
     
     	read_ans(sfd, "3");					// odczytanie odpowiedzi od serwera dla etapu 3.
     
-    
-    
     	// Etap 4 - wysylanie calego pliku do kompresji i odebranie odpowiedzi
 
     	fileData = malloc(fileSize);				// alokacja pamięci dla danych z pliku do kompresji
@@ -219,6 +215,7 @@ int main(int argc, char** argv)
     
     if(atoi(argv[3])!=1)
     {
+    	//sleep(3);
     
     	char buf[BUF_SIZE] = {0};				// bufor na rozmiar pliku po kompresji
     	int bytes =0;						// zmienna pomagająca w pełnym odczycie danych     
