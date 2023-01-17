@@ -1,4 +1,3 @@
-
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -50,7 +49,7 @@ void write_to(int sfd, char* text, long int len)
 }
 
 /*
-    Funkcja czytająca odpowiedź od serwera ('ok')
+    Funkcja czytająca odpowiedź "ok" od serwera
         sfd - deskryptor odbiorcy
         stage - numer aktualnego etapu
 */
@@ -70,7 +69,7 @@ void read_ans(int sfd, char * stage)
 }
 
 /*
-    Funkcja wysyłająca odpowiedz do serwera ('ok')
+    Funkcja wysyłająca odpowiedz "ok" do serwera
     	sfd - deskryptor odbiorcy
     	stage - numer aktualnego etapu
 */
@@ -114,7 +113,7 @@ int main(int argc, char** argv)
     printf("Etap 0 - wysłano tryb pracy serwera.\n");
     /* wysylanie trybu pracy serwera */
     	
-    read_ans(sfd, "0");				// odczytanie odpowiedzi od serwera dla etapu 0.
+    read_ans(sfd, "0");					// odczytanie odpowiedzi od serwera dla etapu 0.
     
     // Etap 1 - wysyłanie liczby plików do kompresji i odbieranie potwierdzenia
     
@@ -148,12 +147,12 @@ int main(int argc, char** argv)
     	file = open_file(argv[6+count], "rb");	// otwarcie pliku
     
     	fseek(file, 0, SEEK_END);		// przejście na koniec pliku
-    	fileSize = ftell(file);	// ftell zwraca aktualną pozycję w pliku (w tym przypadku rozmiar pliku)
+    	fileSize = ftell(file);			// ftell zwraca aktualną pozycję w pliku (w tym przypadku rozmiar pliku)
     
     	fileName = basename(argv[6+count]);	// tutaj będzie przypisana sama nazwa pliku bez ścieżki
     	strcat(fileName, "?");		        // dopisanie do nazwy pliku '?'
     	
-    	fileLen = strlen(fileName);	// sprawdzanie dlugosci nazwy pliku
+    	fileLen = strlen(fileName);		// sprawdzanie dlugosci nazwy pliku
     
     	/* Informacje o pliku */
     	printf("\n\n");
@@ -167,13 +166,14 @@ int main(int argc, char** argv)
     	write_to(sfd, fileName, fileLen+1);
     	printf("Etap 2 - wyslano nazwe pliku do kompresji.\n");
     	/* wysylanie nazwy pliku do kompresji */
-    	read_ans(sfd, "2");				// odczytanie odpowiedzi od serwera dla etapu 2.
-  	sleep(4);
-  	
+    	
+    	read_ans(sfd, "2");			// odczytanie odpowiedzi od serwera dla etapu 2.
+    	
+  	sleep(4);	
 
     	// Etap 3 - wysylanie rozmiaru pliku do kompresji i odebranie potwierdzenia
     
-    	fseek(file, 0, SEEK_SET);				// powrót na początek pliku
+    	fseek(file, 0, SEEK_SET);			// powrót na początek pliku
 
     	lenFileSize = (int)(floor(log10(fileSize)))+2;	// długość rozmiaru pliku (+1, bo log; +1, bo '?' na końcu)
 
@@ -198,8 +198,8 @@ int main(int argc, char** argv)
     
     	// Etap 4 - wysylanie calego pliku do kompresji i odebranie odpowiedzi
 
-    	fileData = malloc(fileSize);				// alokacja pamięci dla danych z pliku do kompresji
-    	for(int i = 0; i < fileSize; i++)	fileData[i] = fgetc(file);	// odczytywanie zawartości pliku do kompresji
+    	fileData = malloc(fileSize);					// alokacja pamięci dla danych z pliku do kompresji
+    	for(int i = 0; i < fileSize; i++)    fileData[i] = fgetc(file);	// odczytywanie zawartości pliku do kompresji
     	fclose(file);							// zamykanie pliku do kompresji
     
     	/* wysylanie calego pliku do kompresji */
@@ -208,15 +208,13 @@ int main(int argc, char** argv)
     	printf("Etap 4 - wyslano plik.\n");
     	/* wysylanie calego pliku do kompresji */
     
-    	read_ans(sfd, "4");							// odczytanie odpowiedzi od serwera dla etapu 4.
+    	read_ans(sfd, "4");						// odczytanie odpowiedzi od serwera dla etapu 4.
     
     	if(fileData)	free(fileData);					// zwalnianie miejsca dla danych z pliku
     }
     
     if(atoi(argv[3])!=1)
-    {
-    	//sleep(3);
-    
+    {  
     	char buf[BUF_SIZE] = {0};				// bufor na rozmiar pliku po kompresji
     	int bytes =0;						// zmienna pomagająca w pełnym odczycie danych     
     
@@ -245,8 +243,6 @@ int main(int argc, char** argv)
     	printf("Size of zip file: %ld\n", fileSize);
     	/* Informacje o pliku */
     
-    
-    
     	// Etap 6 - odbieranie całego pliku po kompresji i wysyłanie odpowiedzi
     
     	fileData = malloc(fileSize);						// alokacja pamięci dla pliku po kompresji
@@ -265,6 +261,7 @@ int main(int argc, char** argv)
 	    }
     	}
     	/* pełny odczyt całego pliku */
+    	
     	file = open_file(argv[4], "w+");					// tworzenie uchwytu dla pliku po kompresji
     	for (long int j=0; j<fileSize; j++)	fputc((int)fileData[j], file);	// uzupelnianie pliku danymi
     	fclose(file);								// zamykanie pliku
