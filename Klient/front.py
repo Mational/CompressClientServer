@@ -95,7 +95,9 @@ def sprawdz_adres():
             LabelError.config(text="Błędne dane!")
         else:
             print(params)
-        command = "client.exe " + params
+        directory = os.path.realpath(os.path.dirname(__file__))
+        print(directory)
+        command = directory + "\client.exe " + params
         os.system(command)
 
 
